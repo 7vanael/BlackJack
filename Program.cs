@@ -5,8 +5,9 @@ namespace BlackJack
     internal class Program
     {
         const string ROUND_WINS = "Round wins";
+        const string BLACKJACK_WINS = "Blackjack wins";        
         const string MONEY = "Money";
-        const string HAND_TOTAL = "Hand Total";
+
         static void Main(string[] args)
         {
             Console.WriteLine("Enter seed or enter to auto-generate one:");
@@ -49,8 +50,8 @@ namespace BlackJack
             foreach (var player in allPlayers)
             {
                 player.Stats[ROUND_WINS] = 0;
-                player.Stats[MONEY] = 0;
-                player.Stats[HAND_TOTAL] = 0;
+                player.Stats[BLACKJACK_WINS] = 0;
+                player.Stats[MONEY] = 0;                
             }
 
             List<Card> deck = CardTools.BuildADeck();
@@ -102,6 +103,7 @@ namespace BlackJack
                         if (BlackJackRules.ScoreHand(player) == 21)
                         {
                             Console.WriteLine($"{player.Name} has BLACKJACK!");
+                            player.Stats[BLACKJACK_WINS]++;
                             isTurnComplete = true;
                             continue;
                         }
@@ -157,10 +159,12 @@ namespace BlackJack
                     if (BlackJackRules.IsPlayerBusted(dealer))
                     {
                         Console.WriteLine($"Dealer busted! {player.Name} is a winner!");
+                        player.Stats[ROUND_WINS]++;
                     }
                     else if (BlackJackRules.ScoreHand(player) >= BlackJackRules.ScoreHand(dealer))
                     {
                         Console.WriteLine($"{player.Name} is a winner!");
+                        player.Stats[ROUND_WINS]++;
                     }
                     else
                     {
@@ -173,6 +177,19 @@ namespace BlackJack
                 {
                     player.DiscardHand();
                 }
+
+                //TODO reshuffle deck?
+
+                //TODO Do you want to play another round?  If not, game summary
+                Console.WriteLine("Play another round? (Y)es or (N)o");
+                var response = Console.ReadLine() ?? "";
+                isGameOver = (response.ToUpper() == "N");
+            }
+
+            Console.WriteLine("-------- GAME SUMMARY --------");
+            foreach(var player in allPlayers.Where(p => p != dealer))
+            {
+                Console.WriteLine($"{player.Name} won {player.Stats[ROUND_WINS]} rounds and had {player.Stats[BLACKJACK_WINS]} blackjacks");
             }
         }
     }
