@@ -25,6 +25,10 @@
             CardTools.TransferCard(card: card, fromPile: Hand, toPile: DiscardPile);
         }
 
+        public void DiscardHand()
+        {
+            CardTools.TransferCardPile(fromPile: Hand, toPile: DiscardPile);
+        }
     }
 
 }
