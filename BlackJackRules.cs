@@ -1,10 +1,23 @@
-﻿namespace BlackJack
+﻿using System.Runtime.CompilerServices;
+
+namespace BlackJack
 {
     internal class BlackJackRules
     {
         internal static bool IsPlayerBusted(Player player)
         {
             return ScoreHand(player) > 21;
+        }
+
+        internal static void PlayerDrawACard(Player player, Random rng)
+        {
+            if(!player.DrawPile.Any())
+            {
+                CardTools.TransferCardPile(player.DiscardPile, player.DrawPile);
+                CardTools.Shuffle(player.DrawPile, rng);
+                Console.WriteLine("The deck was shuffled.");
+            }
+            player.DrawACard();
         }
 
         internal static int ScoreHand (Player player)

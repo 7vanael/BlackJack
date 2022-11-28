@@ -9,14 +9,17 @@ namespace BlackJack
 {
     public static class CardTools
     {
-        public static List<Card> Shuffle(List<Card> pile, Random randomNumberGenerator)
+        public static void Shuffle(List<Card> pile, Random randomNumberGenerator)
         {
             var shuffledDeck = new List<(Card Card, int RandomValue)>();
 
             foreach (var card in pile)
+            {
                 shuffledDeck.Add((card, randomNumberGenerator.Next()));
-
-            return shuffledDeck.OrderBy(tuple => tuple.RandomValue).Select(tuple => tuple.Card).ToList();
+            }
+            pile.Clear();
+            pile.AddRange(shuffledDeck.OrderBy(tuple => tuple.RandomValue).Select(tuple => tuple.Card));
+                        
         }
         public static void TransferCard(Card card, List<Card> fromPile, List<Card> toPile)
         {

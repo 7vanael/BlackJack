@@ -5,7 +5,8 @@ namespace BlackJack
     internal class Program
     {
         const string ROUND_WINS = "Round wins";
-        const string BLACKJACK_WINS = "Blackjack wins";        
+        const string BLACKJACK_WINS = "Blackjack wins";
+        const string BUST_COUNT = "Bust Count";
         const string MONEY = "Money";
 
         static void Main(string[] args)
@@ -51,12 +52,12 @@ namespace BlackJack
             {
                 player.Stats[ROUND_WINS] = 0;
                 player.Stats[BLACKJACK_WINS] = 0;
+                player.Stats[BUST_COUNT] = 0;
                 player.Stats[MONEY] = 0;                
             }
 
-            List<Card> deck = CardTools.BuildADeck();
-
-            List<Card> drawPile = CardTools.Shuffle(deck, rng);
+            List<Card> drawPile = CardTools.BuildADeck();
+            CardTools.Shuffle(drawPile, rng);
             List<Card> discardPile = new List<Card>();
 
             foreach (var player in allPlayers) 
@@ -86,7 +87,7 @@ namespace BlackJack
                 {
                     foreach (Player player in allPlayers)
                     {
-                        player.DrawACard();
+                        BlackJackRules.PlayerDrawACard(player, rng);
                         if(player != dealer || i == 0)
                             Console.WriteLine($"{player.Name} drew {player.Hand.Last()}");
                         else
@@ -96,18 +97,21 @@ namespace BlackJack
 
                 //Starts the round of play
                 foreach (Player player in allPlayers.Where(p => p != dealer))
-                {                   
+                {
+                    Console.WriteLine("\n");
                     bool isTurnComplete = false;
-                    while(!isTurnComplete)
+                    if (BlackJackRules.ScoreHand(player) == 21)
                     {
-                        if (BlackJackRules.ScoreHand(player) == 21)
-                        {
-                            Console.WriteLine($"{player.Name} has BLACKJACK!");
-                            player.Stats[BLACKJACK_WINS]++;
-                            isTurnComplete = true;
-                            continue;
-                        }
+                        Console.WriteLine($"{player.Name} has BLACKJACK!");
+                        player.Stats[BLACKJACK_WINS]++;
+                        isTurnComplete = true;                       
+                    }
 
+                    while (!isTurnComplete)
+                    {
+                        Console.WriteLine("\n");
+                        Console.WriteLine($"Dealer showing {dealer.Hand.First()}");
+                        Console.WriteLine($"{player.Name} has {string.Join(", ", player.Hand.Select(c => c.Rank))}");
                         Console.WriteLine($"{player.Name}, your hand is worth {BlackJackRules.ScoreHand(player)}");
                         Console.WriteLine($"{player.Name}, do you (S)TAY or (H)IT?");
                         var answer = Console.ReadLine() ?? "";
@@ -119,12 +123,13 @@ namespace BlackJack
                                 break;
                             case "H":
                             case "HIT":
-                                player.DrawACard();
+                                BlackJackRules.PlayerDrawACard(player, rng);
                                 Console.WriteLine($"{player.Name} drew {player.Hand.Last()}.");
                                 if (BlackJackRules.IsPlayerBusted(player))
                                 {
                                     Console.WriteLine($"Total score is {BlackJackRules.ScoreHand(player)}");
                                     Console.WriteLine($"{player.Name} BUSTED!");
+                                    player.Stats[BUST_COUNT]++; 
                                     activePlayers.Remove(player);
                                     isTurnComplete = true;
                                 }
@@ -144,7 +149,7 @@ namespace BlackJack
 
                 while(BlackJackRules.ScoreHand(dealer) <= 16)
                 {
-                    dealer.DrawACard();
+                    BlackJackRules.PlayerDrawACard(dealer,rng);
                     Console.WriteLine($"{dealer.Name} drew {dealer.Hand.Last()}.");
                     Console.WriteLine($"Total score is {BlackJackRules.ScoreHand(dealer)}");
                     if (BlackJackRules.IsPlayerBusted(dealer))
@@ -178,9 +183,7 @@ namespace BlackJack
                     player.DiscardHand();
                 }
 
-                //TODO reshuffle deck?
-
-                //TODO Do you want to play another round?  If not, game summary
+                // Do you want to play another round?  If not, game summary
                 Console.WriteLine("Play another round? (Y)es or (N)o");
                 var response = Console.ReadLine() ?? "";
                 isGameOver = (response.ToUpper() == "N");
@@ -189,7 +192,7 @@ namespace BlackJack
             Console.WriteLine("-------- GAME SUMMARY --------");
             foreach(var player in allPlayers.Where(p => p != dealer))
             {
-                Console.WriteLine($"{player.Name} won {player.Stats[ROUND_WINS]} rounds and had {player.Stats[BLACKJACK_WINS]} blackjacks");
+                Console.WriteLine($"{player.Name} won {player.Stats[ROUND_WINS]} rounds, busted {player.Stats[BUST_COUNT]}, and had {player.Stats[BLACKJACK_WINS]} blackjacks");
             }
         }
     }

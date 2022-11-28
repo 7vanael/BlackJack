@@ -5,7 +5,7 @@
         public List<Card> DrawPile { get; set; }
         public List<Card> DiscardPile { get; set; }
         public List<Card> Hand { get; set; }
-        public String Name { get; init; }
+        public required String Name { get; init; }
         public Dictionary<string, int> Stats { get; }
         public Player()
         {
