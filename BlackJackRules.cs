@@ -20,6 +20,16 @@ namespace BlackJack
             player.DrawACard();
         }
 
+        internal static bool CanPlayerBet(Player player, float minimumBet)
+        {
+            return (player.Money >= minimumBet) ;
+        }
+
+        internal static void PlaceABet(Player player, float minimumBet)
+        {
+            player.Money = player.Money - minimumBet;
+            player.Pool = player.Pool + minimumBet;
+        }
         internal static int ScoreHand (Player player)
         {
             int totalScore = 0;

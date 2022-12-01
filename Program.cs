@@ -1,4 +1,5 @@
-﻿using System.Numerics;
+﻿using System.ComponentModel;
+using System.Numerics;
 
 namespace BlackJack
 {
@@ -26,15 +27,59 @@ namespace BlackJack
 
             var allPlayers = new List<Player>();
 
+            //Initializes starting cash/table buy in. Must be >1. 
+            //Starting cash will be the same for every player.
+            
+            float startingCash = 50;
+            float minimumBet = 1;
+            Console.WriteLine("Enter the cash buy in for this table");
+            var done = false;
+            while (!done)
+            {
+                string number = Console.ReadLine() ?? "";
+
+                if (float.TryParse(number, out startingCash) && startingCash >= 1)
+                {
+                    Console.WriteLine($"Got it, the buy in for this game is {startingCash}.");
+                    done = true;
+                }
+                else
+                {
+                    Console.WriteLine($"The house disagrees. The buy in for this game is {startingCash}.");
+                    done = true;
+                }
+                
+            }
+
+            //Set minimum bet
+            Console.WriteLine("Enter the standard bet for this table, or enter to accept $1");
+            done = false;
+            while (!done)
+            {
+                string number = Console.ReadLine() ?? "";
+
+                if (float.TryParse(number, out minimumBet) && minimumBet >0 && minimumBet <= startingCash)
+                {
+                    Console.WriteLine($"Got it, the bet for this game is {minimumBet}.");
+                    done = true;
+                }
+                else
+                {
+                    Console.WriteLine($"The house disagrees. The standard bet for this game is {minimumBet}.");
+                    done = true;
+                }
+
+            }
+
             Console.WriteLine("Enter the names of players and just Enter to finish:");
 
-            var done = false;
+            done = false;
             while (!done)
             {
                 string name = Console.ReadLine() ?? "";
 
                 if (name != "")
-                    allPlayers.Add(new Player() { Name = name });
+                    allPlayers.Add(new Player() { Name = name, Money = startingCash});
                 else
                     done = true;
             }
@@ -59,11 +104,13 @@ namespace BlackJack
             List<Card> drawPile = CardTools.BuildADeck();
             CardTools.Shuffle(drawPile, rng);
             List<Card> discardPile = new List<Card>();
+            float pool = 0;
 
             foreach (var player in allPlayers) 
             {
                 player.DrawPile = drawPile;
                 player.DiscardPile = discardPile;
+                player.Pool = pool;
             }
 
             var roundCounter = 0;
@@ -77,8 +124,22 @@ namespace BlackJack
 
                 //TODO Check if players can afford to bet minimum bets
                 //TODO Remove players who can't continue playing
+                foreach (Player player in activePlayers)
+                {
+                    if(BlackJackRules.CanPlayerBet(player, minimumBet))
+                    {
+                        BlackJackRules.PlaceABet(player, minimumBet);
+                        Console.WriteLine($"{player.Name} bets ${minimumBet}");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"{player.Name} is unable to bet and has been removed from the table!");
+                        activePlayers.Remove(player);
+                    }
+
+                }
                 //TODO Declare winner? Or best loser.
-                //TODO Initialize bets
+                
 
                 // Handle naturals
 
@@ -165,22 +226,29 @@ namespace BlackJack
                     {
                         Console.WriteLine($"Dealer busted! {player.Name} is a winner!");
                         player.Stats[ROUND_WINS]++;
+                        player.Money = player.Money + minimumBet * 2;
+                        Console.WriteLine($"{player.Name} doubled their bet, won ${minimumBet*2} and now has ${player.Money}.")
                     }
                     else if (BlackJackRules.ScoreHand(player) >= BlackJackRules.ScoreHand(dealer))
                     {
                         Console.WriteLine($"{player.Name} is a winner!");
                         player.Stats[ROUND_WINS]++;
+                        player.Money = player.Money + minimumBet * 2;
+                        Console.WriteLine($"{player.Name} doubled their bet, won ${minimumBet * 2} and now has ${player.Money}.")
+
                     }
                     else
                     {
                         Console.WriteLine($"{player.Name} loses!");
+                        Console.WriteLine($"{player.Name} now has ${player.Money}.");
                     }
                 }
 
-                // Discard cards
+                // Discard cards & clears the pool.
                 foreach (var player in allPlayers)
                 {
                     player.DiscardHand();
+                    player.Pool = 0;
                 }
 
                 // Do you want to play another round?  If not, game summary
@@ -193,6 +261,7 @@ namespace BlackJack
             foreach(var player in allPlayers.Where(p => p != dealer))
             {
                 Console.WriteLine($"{player.Name} won {player.Stats[ROUND_WINS]} rounds, busted {player.Stats[BUST_COUNT]}, and had {player.Stats[BLACKJACK_WINS]} blackjacks");
+                Console.WriteLine($"{player.Name} ended with ${player.Money}.");
             }
         }
     }
