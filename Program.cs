@@ -30,16 +30,16 @@ namespace BlackJack
             //Initializes starting cash/table buy in. Must be >1. 
             //Starting cash will be the same for every player.
             
-            float startingCash = 50;
-            float minimumBet = 1;
+            float startingCash = 50f;
+            float minimumBet = 1f;
             Console.WriteLine("Enter the cash buy in for this table");
             var done = false;
             while (!done)
             {
                 string number = Console.ReadLine() ?? "";
-
-                if (float.TryParse(number, out startingCash) && startingCash >= 1)
+                if (float.TryParse(number, out var userEnteredCash) && userEnteredCash >= 1)
                 {
+                    startingCash = userEnteredCash;
                     Console.WriteLine($"Got it, the buy in for this game is {startingCash}.");
                     done = true;
                 }
@@ -48,7 +48,6 @@ namespace BlackJack
                     Console.WriteLine($"The house disagrees. The buy in for this game is {startingCash}.");
                     done = true;
                 }
-                
             }
 
             //Set minimum bet
@@ -58,8 +57,9 @@ namespace BlackJack
             {
                 string number = Console.ReadLine() ?? "";
 
-                if (float.TryParse(number, out minimumBet) && minimumBet >0 && minimumBet <= startingCash)
+                if (float.TryParse(number, out float userEnteredBet) && (userEnteredBet > 0) && (userEnteredBet <= startingCash))
                 {
+                    minimumBet = userEnteredBet;
                     Console.WriteLine($"Got it, the bet for this game is {minimumBet}.");
                     done = true;
                 }
@@ -68,7 +68,6 @@ namespace BlackJack
                     Console.WriteLine($"The house disagrees. The standard bet for this game is {minimumBet}.");
                     done = true;
                 }
-
             }
 
             Console.WriteLine("Enter the names of players and just Enter to finish:");
@@ -89,7 +88,7 @@ namespace BlackJack
                 Console.WriteLine("No players! The House loses!");
                 return;
             }
-            var dealer = new Player() { Name = "Dealer" };
+            var dealer = new Player() { Name = "Dealer", Money = 50000000 };
 
             allPlayers.Add(dealer);
 
@@ -97,34 +96,33 @@ namespace BlackJack
             {
                 player.Stats[ROUND_WINS] = 0;
                 player.Stats[BLACKJACK_WINS] = 0;
-                player.Stats[BUST_COUNT] = 0;
-                player.Stats[MONEY] = 0;                
+                player.Stats[BUST_COUNT] = 0;                              
             }
 
             List<Card> drawPile = CardTools.BuildADeck();
             CardTools.Shuffle(drawPile, rng);
             List<Card> discardPile = new List<Card>();
-            float pool = 0;
+            List<Player> playersWithBlackJack = new List<Player>();
 
             foreach (var player in allPlayers) 
             {
                 player.DrawPile = drawPile;
                 player.DiscardPile = discardPile;
-                player.Pool = pool;
             }
 
             var roundCounter = 0;
-
             var isGameOver = false;
+
+            var activePlayers = new List<Player>(allPlayers);
+
             while (!isGameOver) 
             {
                 Console.WriteLine($"------ ROUND {++roundCounter} ------");
-
-                var activePlayers = new List<Player>(allPlayers);
-
-                //TODO Check if players can afford to bet minimum bets
-                //TODO Remove players who can't continue playing
-                foreach (Player player in activePlayers)
+                playersWithBlackJack.Clear();
+                
+                //Check if players can afford to bet minimum bets
+                //Remove players who can't continue playing
+                foreach (Player player in new List<Player>(activePlayers))
                 {
                     if(BlackJackRules.CanPlayerBet(player, minimumBet))
                     {
@@ -136,17 +134,12 @@ namespace BlackJack
                         Console.WriteLine($"{player.Name} is unable to bet and has been removed from the table!");
                         activePlayers.Remove(player);
                     }
-
                 }
-                //TODO Declare winner? Or best loser.
-                
-
-                // Handle naturals
-
+              
                 //Deals initial two cards to each player
                 for (int i = 0; i < 2; i++)
                 {
-                    foreach (Player player in allPlayers)
+                    foreach (Player player in activePlayers)
                     {
                         BlackJackRules.PlayerDrawACard(player, rng);
                         if(player != dealer || i == 0)
@@ -156,91 +149,109 @@ namespace BlackJack
                     }
                 }
 
-                //Starts the round of play
-                foreach (Player player in allPlayers.Where(p => p != dealer))
+                bool doesDealerHaveBlackJack = false;
+
+                if (BlackJackRules.ScoreHand(dealer) == 21)
                 {
-                    Console.WriteLine("\n");
-                    bool isTurnComplete = false;
+                    Console.WriteLine($"Dealer's second card is {dealer.Hand.Last()}");
+                    Console.WriteLine("Dealer has BLACKJACK!");
+                    doesDealerHaveBlackJack = true;
+                }
+                foreach (Player player in activePlayers.Where(p => p != dealer))
+                {
+                    Console.WriteLine();                    
                     if (BlackJackRules.ScoreHand(player) == 21)
                     {
                         Console.WriteLine($"{player.Name} has BLACKJACK!");
                         player.Stats[BLACKJACK_WINS]++;
-                        isTurnComplete = true;                       
+                        playersWithBlackJack.Add(player);                        
+                    }
+                }
+                if (!doesDealerHaveBlackJack)
+                {
+                    //Starts the round of play
+                    foreach (Player player in activePlayers.Where(p => p != dealer))
+                    {
+                        bool isTurnComplete = false;
+                        if (BlackJackRules.ScoreHand(player) == 21)
+                        {
+                            isTurnComplete = true;
+                        }
+
+                        while (!isTurnComplete)
+                        {
+                            Console.WriteLine();
+                            Console.WriteLine($"Dealer showing {dealer.Hand.First()}");
+                            Console.WriteLine($"{player.Name} has {string.Join(", ", player.Hand.Select(c => c.Rank))}");
+                            Console.WriteLine($"{player.Name}, your hand is worth {BlackJackRules.ScoreHand(player)}");
+                            Console.WriteLine($"{player.Name}, do you (S)TAY or (H)IT?");
+                            var answer = Console.ReadLine() ?? "";
+                            switch (answer.ToUpper())
+                            {
+                                case "S":
+                                case "STAY":
+                                    isTurnComplete = true;
+                                    break;
+                                case "H":
+                                case "HIT":
+                                    BlackJackRules.PlayerDrawACard(player, rng);
+                                    Console.WriteLine($"{player.Name} drew {player.Hand.Last()}.");
+                                    if (BlackJackRules.IsPlayerBusted(player))
+                                    {
+                                        Console.WriteLine($"Total score is {BlackJackRules.ScoreHand(player)}");
+                                        Console.WriteLine($"{player.Name} BUSTED!");
+                                        player.Stats[BUST_COUNT]++;
+                                        isTurnComplete = true;
+                                    }
+                                    break;
+                                default:
+                                    Console.WriteLine("Please enter S to Stay, or H to Hit");
+                                    break;
+                            }
+                        }
                     }
 
-                    while (!isTurnComplete)
+                    // Automate dealer play
+                    Console.WriteLine($"The dealer's second card is {dealer.Hand.Last()}," +
+                        $" dealer's score is {BlackJackRules.ScoreHand(dealer)}");
+
+                    while (BlackJackRules.ScoreHand(dealer) <= 16)
                     {
-                        Console.WriteLine("\n");
-                        Console.WriteLine($"Dealer showing {dealer.Hand.First()}");
-                        Console.WriteLine($"{player.Name} has {string.Join(", ", player.Hand.Select(c => c.Rank))}");
-                        Console.WriteLine($"{player.Name}, your hand is worth {BlackJackRules.ScoreHand(player)}");
-                        Console.WriteLine($"{player.Name}, do you (S)TAY or (H)IT?");
-                        var answer = Console.ReadLine() ?? "";
-                        switch (answer.ToUpper())
+                        BlackJackRules.PlayerDrawACard(dealer, rng);
+                        Console.WriteLine($"{dealer.Name} drew {dealer.Hand.Last()}.");
+                        Console.WriteLine($"Total score is {BlackJackRules.ScoreHand(dealer)}");
+                        if (BlackJackRules.IsPlayerBusted(dealer))
                         {
-                            case "S":
-                            case "STAY":
-                                isTurnComplete = true;
-                                break;
-                            case "H":
-                            case "HIT":
-                                BlackJackRules.PlayerDrawACard(player, rng);
-                                Console.WriteLine($"{player.Name} drew {player.Hand.Last()}.");
-                                if (BlackJackRules.IsPlayerBusted(player))
-                                {
-                                    Console.WriteLine($"Total score is {BlackJackRules.ScoreHand(player)}");
-                                    Console.WriteLine($"{player.Name} BUSTED!");
-                                    player.Stats[BUST_COUNT]++; 
-                                    activePlayers.Remove(player);
-                                    isTurnComplete = true;
-                                }
-                                break;
-                            default:
-                                Console.WriteLine("Please enter S to Stay, or H to Hit");                               
-                                break;
+                            Console.WriteLine($"Dealer BUSTED!");
                         }
                     }
                 }
-
-                // Automate dealer play
-                Console.WriteLine($"The dealer's second card is {dealer.Hand.Last()}," +
-                    $" dealer's score is {BlackJackRules.ScoreHand(dealer)}");
-                if (BlackJackRules.ScoreHand(dealer) == 21)
-                    Console.WriteLine("Dealer has BLACKJACK!");
-
-                while(BlackJackRules.ScoreHand(dealer) <= 16)
-                {
-                    BlackJackRules.PlayerDrawACard(dealer,rng);
-                    Console.WriteLine($"{dealer.Name} drew {dealer.Hand.Last()}.");
-                    Console.WriteLine($"Total score is {BlackJackRules.ScoreHand(dealer)}");
-                    if (BlackJackRules.IsPlayerBusted(dealer))
-                    {
-                        Console.WriteLine($"Dealer BUSTED!");                        
-                    }
-                }
-
                 // Round scoring
                 foreach (var player in activePlayers.Where(p => p != dealer))
                 {
-                    if (BlackJackRules.IsPlayerBusted(dealer))
+                    if(playersWithBlackJack.Contains(player) && !doesDealerHaveBlackJack)
                     {
-                        Console.WriteLine($"Dealer busted! {player.Name} is a winner!");
+                        BlackJackRules.WinABlackJack(player);
+                        Console.WriteLine($"{player.Name} has won with a BlackJack! They now have {player.Money:0.00}");
+                        player.Stats[BLACKJACK_WINS]++;
                         player.Stats[ROUND_WINS]++;
-                        player.Money = player.Money + minimumBet * 2;
-                        Console.WriteLine($"{player.Name} doubled their bet, won ${minimumBet*2} and now has ${player.Money}.")
                     }
-                    else if (BlackJackRules.ScoreHand(player) >= BlackJackRules.ScoreHand(dealer))
+                    else if (!BlackJackRules.IsPlayerBusted(player) 
+                        && (BlackJackRules.IsPlayerBusted(dealer) || (BlackJackRules.ScoreHand(player) > BlackJackRules.ScoreHand(dealer))))
                     {
-                        Console.WriteLine($"{player.Name} is a winner!");
-                        player.Stats[ROUND_WINS]++;
-                        player.Money = player.Money + minimumBet * 2;
-                        Console.WriteLine($"{player.Name} doubled their bet, won ${minimumBet * 2} and now has ${player.Money}.")
-
+                        BlackJackRules.WinABet(player);
+                        Console.WriteLine($"{player.Name} is a winner! They now have {player.Money:0.00}");
+                        player.Stats[ROUND_WINS]++;                        
+                    } 
+                    else if (!BlackJackRules.IsPlayerBusted(player) && (BlackJackRules.ScoreHand(player) == BlackJackRules.ScoreHand(dealer)))
+                    {
+                        BlackJackRules.Push(player);
+                        Console.WriteLine($"{player.Name} pushed. Bet was returned. They now have {player.Money:0.00}.");
                     }
                     else
                     {
                         Console.WriteLine($"{player.Name} loses!");
-                        Console.WriteLine($"{player.Name} now has ${player.Money}.");
+                        Console.WriteLine($"{player.Name} now has ${player.Money:0.00}.");
                     }
                 }
 
@@ -261,7 +272,7 @@ namespace BlackJack
             foreach(var player in allPlayers.Where(p => p != dealer))
             {
                 Console.WriteLine($"{player.Name} won {player.Stats[ROUND_WINS]} rounds, busted {player.Stats[BUST_COUNT]}, and had {player.Stats[BLACKJACK_WINS]} blackjacks");
-                Console.WriteLine($"{player.Name} ended with ${player.Money}.");
+                Console.WriteLine($"{player.Name} ended with ${player.Money:0.00}.");
             }
         }
     }

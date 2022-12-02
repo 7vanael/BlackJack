@@ -30,6 +30,22 @@ namespace BlackJack
             player.Money = player.Money - minimumBet;
             player.Pool = player.Pool + minimumBet;
         }
+        internal static void WinABet(Player player)
+        {
+            player.Money = player.Money + player.Pool * 2f;
+            player.Pool = 0f;
+        }
+        
+        internal static void WinABlackJack(Player player)
+        {
+            player.Money = player.Money + (player.Pool * 3f) / 2f;
+            player.Pool = 0f;
+        }
+        internal static void Push(Player player)
+        {
+            player.Money = player.Money + player.Pool;
+            player.Pool = 0f;
+        }
         internal static int ScoreHand (Player player)
         {
             int totalScore = 0;
