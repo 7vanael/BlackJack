@@ -7,8 +7,7 @@ namespace BlackJack
     {
         const string ROUND_WINS = "Round wins";
         const string BLACKJACK_WINS = "Blackjack wins";
-        const string BUST_COUNT = "Bust Count";
-        const string MONEY = "Money";
+        const string BUST_COUNT = "Bust Count";        
 
         static void Main(string[] args)
         {
@@ -26,7 +25,7 @@ namespace BlackJack
             var rng = new Random(seed);
 
             var allPlayers = new List<Player>();
-
+            
             //Initializes starting cash/table buy in. Must be >1. 
             //Starting cash will be the same for every player.
             
@@ -269,11 +268,15 @@ namespace BlackJack
             }
 
             Console.WriteLine("-------- GAME SUMMARY --------");
+            float playerStartTotal = startingCash * allPlayers.Count(p => p != dealer);
+            float playerEndTotal = 0f;
             foreach(var player in allPlayers.Where(p => p != dealer))
             {
                 Console.WriteLine($"{player.Name} won {player.Stats[ROUND_WINS]} rounds, busted {player.Stats[BUST_COUNT]}, and had {player.Stats[BLACKJACK_WINS]} blackjacks");
                 Console.WriteLine($"{player.Name} ended with ${player.Money:0.00}.");
+                playerEndTotal = playerEndTotal + player.Money;
             }
+            Console.WriteLine($"This game, the house gained {playerStartTotal - playerEndTotal:$0.00}");
         }
     }
 }
